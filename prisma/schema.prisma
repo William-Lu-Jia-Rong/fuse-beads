@@ -1,0 +1,25 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model AppSettings {
+  id        Int      @id @default(1)
+  updatedAt DateTime @updatedAt
+  apiKey    String?  // Optionally encrypted or masked in logic, stored as plain string for now or encrypted by server
+  baseUrl   String?
+}
+
+model Pattern {
+  id           Int      @id @default(autoincrement())
+  createdAt    DateTime @default(now())
+  title        String
+  thumbnailUrl String?  // Optional local path or external URL
+  analysisJson String   // JSON string containing palette, grid, totals
+}
