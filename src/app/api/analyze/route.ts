@@ -1,16 +1,20 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { normalizePaletteEntry } from "@/lib/paletteTypes";
 import OpenAI from "openai";
 import { z } from "zod";
 
-// Expected JSON schema from OpenAI
+const rawPaletteRow = z.object({
+  code: z.union([z.string(), z.number()]).optional().nullable(),
+  nameZh: z.string().optional().nullable(),
+  label: z.string().optional().nullable(),
+  count: z.number(),
+});
+
 const analysisSchema = z.object({
-  palette: z.array(
-    z.object({
-      label: z.string(),
-      count: z.number(),
-    })
-  ),
+  palette: z
+    .array(rawPaletteRow)
+    .transform((rows) => rows.map((r) => normalizePaletteEntry(r))),
   grid: z.object({
     rows: z.number(),
     cols: z.number(),
@@ -53,23 +57,31 @@ export async function POST(request: Request) {
 
     // 3. Call OpenAI
     const prompt = `
-You are an expert at analyzing fuse bead (拼豆) patterns.
-I will provide an image of a fuse bead pattern.
-Please analyze it and return ONLY a JSON object with the following structure:
+You are an expert at analyzing fuse bead (拼豆 / Perler / Hama style) patterns from a screenshot.
+Return ONLY a JSON object (no markdown) with this exact shape:
 {
   "palette": [
-    { "label": "Color Name or approximate color", "count": 123 }
+    {
+      "code": "色号：优先 Perler 官方字母数字编号（如 A01、E11）；若无法辨认则写最接近的常见编号，仍不确定则写 待定",
+      "nameZh": "简体中文颜色名（如 黄色、浅绿、深绿、肤色），不要用英文",
+      "count": 123
+    }
   ],
   "grid": {
-    "rows": number, // The minimum bounding grid rows
-    "cols": number  // The minimum bounding grid columns
+    "rows": number,
+    "cols": number
   },
   "totals": {
-    "totalBeads": number, // Sum of all beads
-    "estimatedMinutes": number // Rough estimation of minutes to make this pattern (e.g., 1 bead = 5 seconds)
+    "totalBeads": number,
+    "estimatedMinutes": number
   }
 }
-Do not include markdown blocks like \`\`\`json. Output raw JSON only.
+Rules:
+- Every palette entry MUST include both "code" and "nameZh" (简体中文).
+- "count" is bead count for that color in the pattern.
+- grid rows/cols = minimum bounding pegboard size (ignore empty margin).
+- For backwards compatibility you may also include "label" as English, but nameZh is required for display.
+Do not wrap in markdown. Output raw JSON only.
 `;
 
     const response = await openai.chat.completions.create({

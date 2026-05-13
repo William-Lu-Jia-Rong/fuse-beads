@@ -4,6 +4,7 @@ import { useState, useRef } from "react";
 import toast from "react-hot-toast";
 import { UploadCloud, Loader2 } from "lucide-react";
 import { ResultCard, PatternData } from "@/components/ResultCard";
+import { normalizePatternData } from "@/lib/paletteTypes";
 
 export default function Home() {
   const [file, setFile] = useState<File | null>(null);
@@ -53,7 +54,7 @@ export default function Home() {
         throw new Error(data.error || "分析失败");
       }
 
-      setResult(data.data);
+      setResult(normalizePatternData(data.data));
       toast.success("分析完成");
     } catch (err: any) {
       toast.error(err.message);

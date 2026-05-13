@@ -5,6 +5,8 @@ import toast from "react-hot-toast";
 import { Loader2, Trash2, PieChart, FileDown } from "lucide-react";
 import { ResultCard, PatternData } from "@/components/ResultCard";
 import type { StatsReportPattern } from "@/lib/pdf/StatsReportDocument";
+import type { PaletteEntry } from "@/lib/paletteTypes";
+import { normalizePatternData } from "@/lib/paletteTypes";
 
 type HistoryItem = {
   id: number;
@@ -24,7 +26,7 @@ export default function History() {
   const [pdfExporting, setPdfExporting] = useState(false);
   const [statsData, setStatsData] = useState<{
     projectsCount: number;
-    palette: { label: string; count: number }[];
+    palette: PaletteEntry[];
     totals: { totalBeads: number; estimatedMinutes: number };
   } | null>(null);
 
@@ -126,7 +128,7 @@ export default function History() {
         const item = items.find((i) => i.id === id);
         if (!item) continue;
         try {
-          const data = JSON.parse(item.analysisJson) as PatternData;
+          const data = normalizePatternData(JSON.parse(item.analysisJson));
           patterns.push({
             id: item.id,
             title: item.title,
@@ -167,7 +169,7 @@ export default function History() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto py-8 animate-in fade-in duration-500">
+    <div className="max-w-5xl mx-auto py-8 animate-in fade-in duration-500">
       <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-gray-900 mb-2">历史与统计</h1>
@@ -204,11 +206,14 @@ export default function History() {
             const isExpanded = expandedId === item.id;
             let parsedData: PatternData | null = null;
             try {
-              parsedData = JSON.parse(item.analysisJson);
+              parsedData = normalizePatternData(JSON.parse(item.analysisJson));
             } catch (e) {}
 
             return (
-              <div key={item.id} className="flex flex-col">
+              <div
+                key={item.id}
+                className={`flex flex-col min-w-0 ${isExpanded ? "col-span-full" : ""}`}
+              >
                 <div
                   className={`relative bg-white border rounded-2xl p-4 cursor-pointer transition-all ${
                     isSelected ? "border-[#0066cc] ring-1 ring-[#0066cc]" : "border-gray-200 hover:border-gray-300"
@@ -254,7 +259,7 @@ export default function History() {
                 </div>
 
                 {isExpanded && parsedData && (
-                  <div className="col-span-full mt-4 mb-6 animate-in slide-in-from-top-2 duration-300">
+                  <div className="mt-4 mb-6 w-full min-w-0 animate-in slide-in-from-top-2 duration-300">
                     <ResultCard data={parsedData} title={item.title} />
                   </div>
                 )}
@@ -302,16 +307,21 @@ export default function History() {
           </div>
 
           <h3 className="text-sm font-medium text-gray-900 mb-4">合并颜色清单</h3>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
             {statsData.palette.map((item, idx) => (
               <div
                 key={idx}
-                className="bg-white border border-gray-200 rounded-lg p-3 flex items-center justify-between shadow-sm"
+                className="bg-white border border-gray-200 rounded-lg p-3 flex items-start justify-between gap-2 shadow-sm"
               >
-                <span className="text-sm text-gray-700 truncate mr-2" title={item.label}>
-                  {item.label}
-                </span>
-                <span className="text-sm font-bold text-gray-900">
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium text-gray-900 truncate" title={item.nameZh}>
+                    {item.nameZh}
+                  </p>
+                  <p className="text-xs text-gray-500 font-mono mt-0.5 truncate" title={item.code}>
+                    色号 {item.code}
+                  </p>
+                </div>
+                <span className="text-sm font-bold text-gray-900 tabular-nums shrink-0">
                   {item.count}
                 </span>
               </div>

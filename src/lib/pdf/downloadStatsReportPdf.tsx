@@ -6,11 +6,13 @@ import {
   type StatsReportPattern,
   type StatsReportSummary,
 } from "./StatsReportDocument";
+import { preloadPdfFonts } from "./pdfFonts";
 
 export async function downloadStatsReportPdf(params: {
   summary: StatsReportSummary;
   patterns: StatsReportPattern[];
 }): Promise<void> {
+  await preloadPdfFonts();
   const generatedAt = new Date().toLocaleString("zh-CN");
   const blob = await pdf(
     <StatsReportDocument

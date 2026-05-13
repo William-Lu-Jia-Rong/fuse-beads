@@ -17,8 +17,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="zh-CN">
+    <html lang="zh-CN" suppressHydrationWarning>
       <body
+        suppressHydrationWarning
         className={`${inter.variable} antialiased bg-[#fbfbfd] text-[#1d1d1f] min-h-screen flex flex-col font-sans selection:bg-[#0066cc] selection:text-white`}
       >
         <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-200">

@@ -1,28 +1,17 @@
 import {
   Document,
-  Font,
   Image,
   Page,
   StyleSheet,
   Text,
   View,
 } from "@react-pdf/renderer";
-import type { PatternData } from "@/components/ResultCard";
+import type { PatternData, PaletteEntry } from "@/lib/paletteTypes";
+import { registerPdfFonts } from "./pdfFonts";
 
-/** Noto Sans SC for Chinese labels (remote WOFF2). */
-const NOTO_SANS_SC_WOFF2 =
-  "https://cdn.jsdelivr.net/npm/@fontsource/noto-sans-sc@5.0.20/files/noto-sans-sc-chinese-simplified-400-normal.woff2";
-
-let fontsRegistered = false;
-
-function ensureFonts() {
-  if (fontsRegistered) return;
-  Font.register({
-    family: "Noto",
-    src: NOTO_SANS_SC_WOFF2,
-    fontWeight: 400,
-  });
-  fontsRegistered = true;
+/** Call before rendering any PDF subtree (idempotent). */
+function ensurePdfFontsRegistered() {
+  registerPdfFonts();
 }
 
 export type StatsReportPattern = {
@@ -35,7 +24,7 @@ export type StatsReportPattern = {
 
 export type StatsReportSummary = {
   projectsCount: number;
-  palette: { label: string; count: number }[];
+  palette: PaletteEntry[];
   totals: { totalBeads: number; estimatedMinutes: number };
 };
 
@@ -45,8 +34,8 @@ export type StatsReportProps = {
   patterns: StatsReportPattern[];
 };
 
-const PALETTE_CHUNK = 26;
-const SUMMARY_PALETTE_CHUNK = 32;
+const PALETTE_CHUNK = 22;
+const SUMMARY_PALETTE_CHUNK = 26;
 
 function chunkPalette<T>(rows: T[], size: number): T[][] {
   if (rows.length === 0) return [[]];
@@ -87,22 +76,21 @@ const styles = StyleSheet.create({
   sectionLabel: {
     fontSize: 9,
     color: "#86868b",
-    textTransform: "uppercase",
     letterSpacing: 1.2,
     marginBottom: 10,
     marginTop: 4,
   },
   statRow: {
     flexDirection: "row",
-    gap: 12,
+    justifyContent: "space-between",
     marginBottom: 28,
   },
   statBox: {
-    flex: 1,
+    width: "31%",
     backgroundColor: "#f5f5f7",
     borderRadius: 8,
     paddingVertical: 16,
-    paddingHorizontal: 18,
+    paddingHorizontal: 12,
   },
   statValue: {
     fontSize: 26,
@@ -126,8 +114,9 @@ const styles = StyleSheet.create({
     borderBottomColor: "#e8e8ed",
     paddingVertical: 7,
   },
-  colColor: { flex: 1, paddingRight: 8 },
-  colCount: { width: 56, textAlign: "right" },
+  colNameZh: { flex: 1, paddingRight: 6 },
+  colCode: { width: 76, fontSize: 9, color: "#424245" },
+  colCount: { width: 44, textAlign: "right" },
   headerText: { fontSize: 9, color: "#86868b" },
   patternTitle: {
     fontSize: 15,
@@ -141,13 +130,13 @@ const styles = StyleSheet.create({
   },
   heroRow: {
     flexDirection: "row",
-    gap: 20,
     marginBottom: 18,
     alignItems: "flex-start",
   },
   thumbWrap: {
     width: 148,
     height: 148,
+    marginRight: 16,
     borderRadius: 10,
     borderWidth: 1,
     borderColor: "#e8e8ed",
@@ -163,10 +152,10 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 10,
   },
   metaChip: {
-    minWidth: "30%",
+    width: "47%",
+    marginBottom: 8,
     backgroundColor: "#f5f5f7",
     borderRadius: 6,
     paddingVertical: 8,
@@ -189,7 +178,7 @@ function SinglePatternPage({
   totalChunks,
 }: {
   pattern: StatsReportPattern;
-  rows: { label: string; count: number }[];
+  rows: PaletteEntry[];
   chunkIndex: number;
   totalChunks: number;
 }) {
@@ -251,12 +240,14 @@ function SinglePatternPage({
       )}
 
       <View style={styles.tableHeader}>
-        <Text style={[styles.colColor, styles.headerText]}>颜色</Text>
+        <Text style={[styles.colNameZh, styles.headerText]}>中文名</Text>
+        <Text style={[styles.colCode, styles.headerText]}>色号</Text>
         <Text style={[styles.colCount, styles.headerText]}>数量</Text>
       </View>
       {rows.map((row, i) => (
         <View key={i} style={styles.tableRow} wrap={false}>
-          <Text style={styles.colColor}>{row.label}</Text>
+          <Text style={styles.colNameZh}>{row.nameZh}</Text>
+          <Text style={styles.colCode}>{row.code}</Text>
           <Text style={styles.colCount}>{row.count}</Text>
         </View>
       ))}
@@ -265,7 +256,7 @@ function SinglePatternPage({
 }
 
 export function StatsReportDocument(props: StatsReportProps) {
-  ensureFonts();
+  ensurePdfFontsRegistered();
   const { generatedAt, summary, patterns } = props;
   const summaryChunks = chunkPalette(summary.palette, SUMMARY_PALETTE_CHUNK);
 
@@ -315,12 +306,14 @@ export function StatsReportDocument(props: StatsReportProps) {
           )}
 
           <View style={styles.tableHeader}>
-            <Text style={[styles.colColor, styles.headerText]}>颜色</Text>
+            <Text style={[styles.colNameZh, styles.headerText]}>中文名</Text>
+            <Text style={[styles.colCode, styles.headerText]}>色号</Text>
             <Text style={[styles.colCount, styles.headerText]}>数量</Text>
           </View>
           {rows.map((row, i) => (
             <View key={i} style={styles.tableRow} wrap={false}>
-              <Text style={styles.colColor}>{row.label}</Text>
+              <Text style={styles.colNameZh}>{row.nameZh}</Text>
+              <Text style={styles.colCode}>{row.code}</Text>
               <Text style={styles.colCount}>{row.count}</Text>
             </View>
           ))}

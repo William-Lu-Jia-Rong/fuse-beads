@@ -1,5 +1,10 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import {
+  normalizePatternData,
+  paletteMergeKey,
+  type PaletteEntry,
+} from "@/lib/paletteTypes";
 
 export async function POST(request: Request) {
   try {
@@ -14,19 +19,24 @@ export async function POST(request: Request) {
       },
     });
 
-    // Aggregate logic
-    const aggregatedPalette: Record<string, number> = {};
+    const merged = new Map<string, PaletteEntry>();
     let totalBeads = 0;
     let totalMinutes = 0;
 
     for (const pattern of patterns) {
-      const data = JSON.parse(pattern.analysisJson);
+      const data = normalizePatternData(JSON.parse(pattern.analysisJson));
       if (data.palette) {
-        data.palette.forEach((item: { label: string; count: number }) => {
-          if (!aggregatedPalette[item.label]) {
-            aggregatedPalette[item.label] = 0;
+        data.palette.forEach((item) => {
+          const key = paletteMergeKey(item);
+          const prev = merged.get(key);
+          if (!prev) {
+            merged.set(key, { ...item });
+          } else {
+            merged.set(key, {
+              ...prev,
+              count: prev.count + item.count,
+            });
           }
-          aggregatedPalette[item.label] += item.count;
         });
       }
       if (data.totals) {
@@ -35,9 +45,7 @@ export async function POST(request: Request) {
       }
     }
 
-    const finalPalette = Object.entries(aggregatedPalette)
-      .map(([label, count]) => ({ label, count }))
-      .sort((a, b) => b.count - a.count);
+    const finalPalette = Array.from(merged.values()).sort((a, b) => b.count - a.count);
 
     return NextResponse.json({
       success: true,
@@ -50,7 +58,7 @@ export async function POST(request: Request) {
         },
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error aggregating stats:", error);
     return NextResponse.json({ error: "Failed to aggregate stats" }, { status: 500 });
   }
