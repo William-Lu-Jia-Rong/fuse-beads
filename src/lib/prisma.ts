@@ -1,22 +1,16 @@
-import { PrismaClient } from '@prisma/client'
-import { Pool } from 'pg'
-import { PrismaPg } from '@prisma/adapter-pg'
+import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
+import { PrismaClient } from "@prisma/client";
 
 const globalForPrisma = globalThis as unknown as {
-  prisma: PrismaClient | undefined
+  prisma: PrismaClient | undefined;
+};
+
+function createPrismaClient() {
+  const databaseUrl = process.env.DATABASE_URL ?? "file:./dev.db";
+  const adapter = new PrismaBetterSqlite3({ url: databaseUrl });
+  return new PrismaClient({ adapter });
 }
 
-let prisma: PrismaClient;
+export const prisma = globalForPrisma.prisma ?? createPrismaClient();
 
-if (globalForPrisma.prisma) {
-  prisma = globalForPrisma.prisma;
-} else {
-  const connectionString = process.env.DATABASE_URL || 'postgresql://fuse:fusepassword@localhost:5432/fuse_beads?schema=public';
-  const pool = new Pool({ connectionString });
-  const adapter = new PrismaPg(pool);
-  prisma = new PrismaClient({ adapter });
-}
-
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
-
-export { prisma }
+if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;

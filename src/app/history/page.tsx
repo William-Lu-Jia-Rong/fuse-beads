@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from "react";
 import toast from "react-hot-toast";
-import { Loader2, Trash2, PieChart } from "lucide-react";
+import { Loader2, Trash2, PieChart, FileDown } from "lucide-react";
 import { ResultCard, PatternData } from "@/components/ResultCard";
+import type { StatsReportPattern } from "@/lib/pdf/StatsReportDocument";
 
 type HistoryItem = {
   id: number;
@@ -20,6 +21,7 @@ export default function History() {
   const [expandedId, setExpandedId] = useState<number | null>(null);
 
   const [statsLoading, setStatsLoading] = useState(false);
+  const [pdfExporting, setPdfExporting] = useState(false);
   const [statsData, setStatsData] = useState<{
     projectsCount: number;
     palette: { label: string; count: number }[];
@@ -111,6 +113,48 @@ export default function History() {
       toast.error(err.message || "统计失败");
     } finally {
       setStatsLoading(false);
+    }
+  };
+
+  const handleExportPdf = async () => {
+    if (!statsData) return;
+    setPdfExporting(true);
+    try {
+      const idOrder = Array.from(selectedIds);
+      const patterns: StatsReportPattern[] = [];
+      for (const id of idOrder) {
+        const item = items.find((i) => i.id === id);
+        if (!item) continue;
+        try {
+          const data = JSON.parse(item.analysisJson) as PatternData;
+          patterns.push({
+            id: item.id,
+            title: item.title,
+            createdAt: item.createdAt,
+            thumbnailUrl: item.thumbnailUrl || null,
+            data,
+          });
+        } catch {
+          /* skip invalid */
+        }
+      }
+      const { downloadStatsReportPdf } = await import(
+        "@/lib/pdf/downloadStatsReportPdf"
+      );
+      await downloadStatsReportPdf({
+        summary: {
+          projectsCount: statsData.projectsCount,
+          palette: statsData.palette,
+          totals: statsData.totals,
+        },
+        patterns,
+      });
+      toast.success("已导出 PDF");
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "导出失败";
+      toast.error(msg);
+    } finally {
+      setPdfExporting(false);
     }
   };
 
@@ -222,11 +266,28 @@ export default function History() {
 
       {statsData && (
         <div id="stats-section" className="bg-white rounded-3xl p-8 border border-[#0066cc]/20 shadow-sm mb-12 animate-in fade-in slide-in-from-bottom-4">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-10 h-10 rounded-full bg-[#0066cc]/10 text-[#0066cc] flex items-center justify-center shrink-0">
-              <PieChart className="w-5 h-5" />
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-[#0066cc]/10 text-[#0066cc] flex items-center justify-center shrink-0">
+                <PieChart className="w-5 h-5" />
+              </div>
+              <h2 className="text-2xl font-bold text-gray-900">
+                汇总统计 ({statsData.projectsCount} 个项目)
+              </h2>
             </div>
-            <h2 className="text-2xl font-bold text-gray-900">汇总统计 ({statsData.projectsCount} 个项目)</h2>
+            <button
+              type="button"
+              onClick={handleExportPdf}
+              disabled={pdfExporting}
+              className="inline-flex items-center justify-center gap-2 rounded-full bg-[#1d1d1f] px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[#333336] disabled:opacity-50"
+            >
+              {pdfExporting ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <FileDown className="h-4 w-4" />
+              )}
+              导出 PDF
+            </button>
           </div>
           
           <div className="grid grid-cols-2 gap-4 mb-8">
