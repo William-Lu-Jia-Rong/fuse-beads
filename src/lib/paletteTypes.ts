@@ -38,6 +38,50 @@ export function normalizePaletteEntry(raw: {
   };
 }
 
+/**
+ * Align `totals.totalBeads` with the sum of `palette[].count`.
+ * The analysis model often returns a headline total that does not match the per-color counts.
+ */
+export function reconcilePatternTotals(data: PatternData): PatternData {
+  const sum = data.palette.reduce((s, e) => {
+    const n = Number(e.count);
+    return s + (Number.isFinite(n) ? Math.max(0, Math.floor(n)) : 0);
+  }, 0);
+  const prevTotal = Math.max(
+    0,
+    Math.floor(Number(data.totals.totalBeads)) || 0
+  );
+  const prevMinutes = Math.max(
+    0,
+    Math.floor(Number(data.totals.estimatedMinutes)) || 0
+  );
+
+  if (sum === 0) {
+    return {
+      ...data,
+      totals: {
+        totalBeads: prevTotal,
+        estimatedMinutes: prevMinutes,
+      },
+    };
+  }
+
+  let estimatedMinutes: number;
+  if (prevTotal > 0 && prevMinutes > 0) {
+    estimatedMinutes = Math.max(1, Math.round((sum * prevMinutes) / prevTotal));
+  } else {
+    estimatedMinutes = Math.max(1, Math.floor(sum / 10));
+  }
+
+  return {
+    ...data,
+    totals: {
+      totalBeads: sum,
+      estimatedMinutes,
+    },
+  };
+}
+
 export function normalizePatternData(data: unknown): PatternData {
   const d = data as PatternData & { palette?: unknown[] };
   const palette = Array.isArray(d.palette)
@@ -45,11 +89,12 @@ export function normalizePatternData(data: unknown): PatternData {
         normalizePaletteEntry(row as Parameters<typeof normalizePaletteEntry>[0])
       )
     : [];
-  return {
+  const base: PatternData = {
     palette,
     grid: d.grid ?? { rows: 0, cols: 0 },
     totals: d.totals ?? { totalBeads: 0, estimatedMinutes: 0 },
   };
+  return reconcilePatternTotals(base);
 }
 
 /** Merge key: same 色号优先合并；否则按中文名 */

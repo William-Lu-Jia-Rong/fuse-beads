@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { normalizePaletteEntry } from "@/lib/paletteTypes";
+import { normalizePaletteEntry, normalizePatternData } from "@/lib/paletteTypes";
 import OpenAI from "openai";
 import { z } from "zod";
 
@@ -79,6 +79,7 @@ Return ONLY a JSON object (no markdown) with this exact shape:
 Rules:
 - Every palette entry MUST include both "code" and "nameZh" (简体中文).
 - "count" is bead count for that color in the pattern.
+- "totals.totalBeads" MUST exactly equal the sum of all palette "count" values (no rounding drift).
 - grid rows/cols = minimum bounding pegboard size (ignore empty margin).
 - For backwards compatibility you may also include "label" as English, but nameZh is required for display.
 Do not wrap in markdown. Output raw JSON only.
@@ -115,17 +116,18 @@ Do not wrap in markdown. Output raw JSON only.
     // 4. Parse and validate JSON
     const parsedData = JSON.parse(content);
     const validatedData = analysisSchema.parse(parsedData);
+    const dataToSave = normalizePatternData(validatedData);
 
     // 5. Save to database
     const pattern = await prisma.pattern.create({
       data: {
         title: title || "Unnamed Pattern",
         thumbnailUrl: imageBase64, // Storing full base64 as thumbnail for now, can be optimized later
-        analysisJson: JSON.stringify(validatedData),
+        analysisJson: JSON.stringify(dataToSave),
       },
     });
 
-    return NextResponse.json({ success: true, pattern, data: validatedData });
+    return NextResponse.json({ success: true, pattern, data: dataToSave });
   } catch (error: any) {
     console.error("Error analyzing pattern:", error);
     if (error instanceof z.ZodError) {

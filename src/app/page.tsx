@@ -3,14 +3,16 @@
 import { useState, useRef } from "react";
 import toast from "react-hot-toast";
 import { UploadCloud, Loader2 } from "lucide-react";
-import { ResultCard, PatternData } from "@/components/ResultCard";
-import { normalizePatternData } from "@/lib/paletteTypes";
+import { ResultCard } from "@/components/ResultCard";
 
 export default function Home() {
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<PatternData | null>(null);
+  const [savedCard, setSavedCard] = useState<{
+    analysisJson: string;
+    patternId: number;
+  } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -30,7 +32,7 @@ export default function Home() {
         setPreview(event.target?.result as string);
       };
       reader.readAsDataURL(selected);
-      setResult(null);
+      setSavedCard(null);
     }
   };
 
@@ -54,7 +56,10 @@ export default function Home() {
         throw new Error(data.error || "分析失败");
       }
 
-      setResult(normalizePatternData(data.data));
+      setSavedCard({
+        analysisJson: data.pattern.analysisJson,
+        patternId: data.pattern.id,
+      });
       toast.success("分析完成");
     } catch (err: any) {
       toast.error(err.message);
@@ -130,7 +135,17 @@ export default function Home() {
         />
       </div>
 
-      {result && <ResultCard data={result} thumbnailUrl={preview || undefined} />}
+      {savedCard && (
+        <ResultCard
+          analysisJson={savedCard.analysisJson}
+          patternId={savedCard.patternId}
+          thumbnailUrl={preview || undefined}
+          title={file?.name || "未命名图纸"}
+          onSaved={(json) =>
+            setSavedCard((prev) => (prev ? { ...prev, analysisJson: json } : prev))
+          }
+        />
+      )}
     </div>
   );
 }

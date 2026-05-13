@@ -260,7 +260,17 @@ export default function History() {
 
                 {isExpanded && parsedData && (
                   <div className="mt-4 mb-6 w-full min-w-0 animate-in slide-in-from-top-2 duration-300">
-                    <ResultCard data={parsedData} title={item.title} />
+                    <ResultCard
+                      analysisJson={item.analysisJson}
+                      patternId={item.id}
+                      title={item.title}
+                      thumbnailUrl={item.thumbnailUrl}
+                      onSaved={(json) => {
+                        setItems((prev) =>
+                          prev.map((x) => (x.id === item.id ? { ...x, analysisJson: json } : x))
+                        );
+                      }}
+                    />
                   </div>
                 )}
               </div>

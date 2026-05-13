@@ -20,7 +20,6 @@ export async function POST(request: Request) {
     });
 
     const merged = new Map<string, PaletteEntry>();
-    let totalBeads = 0;
     let totalMinutes = 0;
 
     for (const pattern of patterns) {
@@ -40,12 +39,12 @@ export async function POST(request: Request) {
         });
       }
       if (data.totals) {
-        totalBeads += data.totals.totalBeads || 0;
         totalMinutes += data.totals.estimatedMinutes || 0;
       }
     }
 
     const finalPalette = Array.from(merged.values()).sort((a, b) => b.count - a.count);
+    const totalBeads = finalPalette.reduce((s, e) => s + e.count, 0);
 
     return NextResponse.json({
       success: true,
