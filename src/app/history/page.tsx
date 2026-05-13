@@ -23,6 +23,7 @@ export default function History() {
   const [expandedId, setExpandedId] = useState<number | null>(null);
 
   const [statsLoading, setStatsLoading] = useState(false);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
   const [pdfExporting, setPdfExporting] = useState(false);
   const [statsData, setStatsData] = useState<{
     projectsCount: number;
@@ -68,6 +69,37 @@ export default function History() {
       if (expandedId === id) setExpandedId(null);
     } catch (err: any) {
       toast.error(err.message);
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.size === 0) {
+      toast.error("请先勾选要删除的记录");
+      return;
+    }
+    const ids = Array.from(selectedIds);
+    if (!confirm(`确定删除所选的 ${ids.length} 条记录？此操作不可恢复。`)) return;
+
+    setBulkDeleting(true);
+    try {
+      for (const id of ids) {
+        const res = await fetch("/api/history", {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id }),
+        });
+        if (!res.ok) throw new Error("删除失败");
+      }
+      toast.success(`已删除 ${ids.length} 条`);
+      setItems((prev) => prev.filter((item) => !ids.includes(item.id)));
+      setSelectedIds(new Set());
+      setExpandedId((cur) => (cur != null && ids.includes(cur) ? null : cur));
+      setStatsData(null);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "删除失败";
+      toast.error(msg);
+    } finally {
+      setBulkDeleting(false);
     }
   };
 
@@ -177,14 +209,30 @@ export default function History() {
             共 {items.length} 个历史项目。多选项目以进行颜色与耗时合计。
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           <button
+            type="button"
             onClick={toggleSelectAll}
             className="text-sm font-medium text-gray-600 hover:text-black px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors"
           >
             {selectedIds.size === items.length && items.length > 0 ? "取消全选" : "全选"}
           </button>
           <button
+            type="button"
+            onClick={handleBulkDelete}
+            disabled={selectedIds.size === 0 || bulkDeleting}
+            className="text-sm font-medium text-red-600 hover:text-red-700 px-3 py-2 rounded-lg hover:bg-red-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent flex items-center gap-1.5"
+          >
+            {bulkDeleting ? (
+              <Loader2 className="w-4 h-4 animate-spin shrink-0" />
+            ) : (
+              <Trash2 className="w-4 h-4 shrink-0" />
+            )}
+            删除所选
+            {selectedIds.size > 0 ? ` (${selectedIds.size})` : ""}
+          </button>
+          <button
+            type="button"
             onClick={handleAggregateStats}
             disabled={selectedIds.size === 0 || statsLoading}
             className="bg-[#1d1d1f] text-white px-5 py-2.5 rounded-full text-sm font-medium hover:bg-[#333336] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
@@ -235,10 +283,13 @@ export default function History() {
                     )}
                   </div>
                   <button
-                    className="absolute top-3 right-3 text-gray-300 hover:text-red-500 z-10 transition-colors bg-white/80 rounded p-0.5"
+                    type="button"
+                    title="删除此记录"
+                    className="absolute top-3 right-3 z-10 flex items-center gap-1 rounded-lg border border-gray-200 bg-white/95 px-2 py-1 text-xs font-medium text-gray-600 shadow-sm transition-colors hover:border-red-200 hover:bg-red-50 hover:text-red-700"
                     onClick={(e) => handleDelete(item.id, e)}
                   >
-                    <Trash2 className="w-4 h-4" />
+                    <Trash2 className="w-3.5 h-3.5 shrink-0" aria-hidden />
+                    删除
                   </button>
 
                   <div className="w-full aspect-square bg-gray-50 rounded-xl overflow-hidden mb-4 mt-2">
@@ -259,7 +310,17 @@ export default function History() {
                 </div>
 
                 {isExpanded && parsedData && (
-                  <div className="mt-4 mb-6 w-full min-w-0 animate-in slide-in-from-top-2 duration-300">
+                  <div className="mt-4 mb-6 w-full min-w-0 animate-in slide-in-from-top-2 duration-300 space-y-3">
+                    <div className="flex justify-end">
+                      <button
+                        type="button"
+                        onClick={(e) => handleDelete(item.id, e)}
+                        className="inline-flex items-center gap-1.5 rounded-full border border-red-200 bg-white px-3 py-1.5 text-xs font-medium text-red-600 transition-colors hover:bg-red-50"
+                      >
+                        <Trash2 className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                        删除此项目
+                      </button>
+                    </div>
                     <ResultCard
                       analysisJson={item.analysisJson}
                       patternId={item.id}

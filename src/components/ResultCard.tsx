@@ -10,6 +10,8 @@ export type ResultCardProps = {
   patternId?: number;
   title?: string;
   thumbnailUrl?: string;
+  /** 嵌入列表等场景时去掉外边距与居中最大宽 */
+  embedded?: boolean;
   /** Called after a successful save so parent can refresh `analysisJson`. */
   onSaved?: (analysisJson: string) => void;
 };
@@ -19,6 +21,7 @@ export function ResultCard({
   patternId,
   title,
   thumbnailUrl,
+  embedded = false,
   onSaved,
 }: ResultCardProps) {
   const [local, setLocal] = useState<PatternData>(() =>
@@ -124,7 +127,9 @@ export function ResultCard({
 
   return (
     <div
-      className="bg-white rounded-2xl shadow-sm border border-gray-200 mt-8 w-full max-w-3xl mx-auto min-w-0"
+      className={`bg-white rounded-2xl shadow-sm border border-gray-200 w-full min-w-0 ${
+        embedded ? "mt-0" : "mt-8 max-w-3xl mx-auto"
+      }`}
       onMouseDown={(e) => e.stopPropagation()}
       onClick={(e) => e.stopPropagation()}
     >

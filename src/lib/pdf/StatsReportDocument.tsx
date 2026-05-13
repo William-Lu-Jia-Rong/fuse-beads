@@ -7,12 +7,6 @@ import {
   View,
 } from "@react-pdf/renderer";
 import type { PatternData, PaletteEntry } from "@/lib/paletteTypes";
-import { registerPdfFonts } from "./pdfFonts";
-
-/** Call before rendering any PDF subtree (idempotent). */
-function ensurePdfFontsRegistered() {
-  registerPdfFonts();
-}
 
 export type StatsReportPattern = {
   id: number;
@@ -50,6 +44,7 @@ const styles = StyleSheet.create({
   page: {
     fontFamily: "Noto",
     fontSize: 10,
+    lineHeight: 1.35,
     color: "#1d1d1f",
     paddingTop: 44,
     paddingBottom: 44,
@@ -206,22 +201,22 @@ function SinglePatternPage({
               <View style={styles.metaChip}>
                 <Text style={styles.metaChipLabel}>最小网格（列 × 行）</Text>
                 <Text style={styles.metaChipValue}>
-                  {data.grid.cols} × {data.grid.rows}
+                  {String(data.grid.cols)} × {String(data.grid.rows)}
                 </Text>
               </View>
               <View style={styles.metaChip}>
                 <Text style={styles.metaChipLabel}>总颗粒数</Text>
-                <Text style={styles.metaChipValue}>{data.totals.totalBeads}</Text>
+                <Text style={styles.metaChipValue}>{String(data.totals.totalBeads)}</Text>
               </View>
               <View style={styles.metaChip}>
                 <Text style={styles.metaChipLabel}>预计时间（分钟）</Text>
                 <Text style={styles.metaChipValue}>
-                  {data.totals.estimatedMinutes}
+                  {String(data.totals.estimatedMinutes)}
                 </Text>
               </View>
               <View style={styles.metaChip}>
                 <Text style={styles.metaChipLabel}>颜色种类</Text>
-                <Text style={styles.metaChipValue}>{data.palette.length}</Text>
+                <Text style={styles.metaChipValue}>{String(data.palette.length)}</Text>
               </View>
             </View>
           </View>
@@ -233,7 +228,9 @@ function SinglePatternPage({
           <Text style={styles.brand}>续页</Text>
           <Text style={styles.patternTitle}>
             {title}
-            {totalChunks > 1 ? `（续 ${chunkIndex + 1} / ${totalChunks}）` : ""}
+            {totalChunks > 1
+              ? `（续 ${String(chunkIndex + 1)} / ${String(totalChunks)}）`
+              : ""}
           </Text>
           <Text style={styles.contLabel}>颜色明细（续）</Text>
         </>
@@ -246,9 +243,9 @@ function SinglePatternPage({
       </View>
       {rows.map((row, i) => (
         <View key={i} style={styles.tableRow} wrap={false}>
-          <Text style={styles.colNameZh}>{row.nameZh}</Text>
-          <Text style={styles.colCode}>{row.code}</Text>
-          <Text style={styles.colCount}>{row.count}</Text>
+          <Text style={styles.colNameZh}>{String(row.nameZh)}</Text>
+          <Text style={styles.colCode}>{String(row.code)}</Text>
+          <Text style={styles.colCount}>{String(row.count)}</Text>
         </View>
       ))}
     </Page>
@@ -256,7 +253,6 @@ function SinglePatternPage({
 }
 
 export function StatsReportDocument(props: StatsReportProps) {
-  ensurePdfFontsRegistered();
   const { generatedAt, summary, patterns } = props;
   const summaryChunks = chunkPalette(summary.palette, SUMMARY_PALETTE_CHUNK);
 
@@ -279,16 +275,16 @@ export function StatsReportDocument(props: StatsReportProps) {
               <View style={styles.statRow}>
                 <View style={styles.statBox}>
                   <Text style={styles.statCaption}>包含图纸数</Text>
-                  <Text style={styles.statValue}>{summary.projectsCount}</Text>
+                  <Text style={styles.statValue}>{String(summary.projectsCount)}</Text>
                 </View>
                 <View style={styles.statBox}>
                   <Text style={styles.statCaption}>合计颗粒数</Text>
-                  <Text style={styles.statValue}>{summary.totals.totalBeads}</Text>
+                  <Text style={styles.statValue}>{String(summary.totals.totalBeads)}</Text>
                 </View>
                 <View style={styles.statBox}>
                   <Text style={styles.statCaption}>预估总时间（分钟）</Text>
                   <Text style={styles.statValue}>
-                    {summary.totals.estimatedMinutes}
+                    {String(summary.totals.estimatedMinutes)}
                   </Text>
                 </View>
               </View>
@@ -300,7 +296,7 @@ export function StatsReportDocument(props: StatsReportProps) {
               <Text style={styles.brand}>FUSE BEADS</Text>
               <Text style={styles.h1}>拼豆统计报告（续）</Text>
               <Text style={styles.sub}>
-                合并颜色需求 · 第 {chunkIndex + 1} / {summaryChunks.length} 页
+                合并颜色需求 · 第 {String(chunkIndex + 1)} / {String(summaryChunks.length)} 页
               </Text>
             </>
           )}
@@ -312,9 +308,9 @@ export function StatsReportDocument(props: StatsReportProps) {
           </View>
           {rows.map((row, i) => (
             <View key={i} style={styles.tableRow} wrap={false}>
-              <Text style={styles.colNameZh}>{row.nameZh}</Text>
-              <Text style={styles.colCode}>{row.code}</Text>
-              <Text style={styles.colCount}>{row.count}</Text>
+              <Text style={styles.colNameZh}>{String(row.nameZh)}</Text>
+              <Text style={styles.colCode}>{String(row.code)}</Text>
+              <Text style={styles.colCount}>{String(row.count)}</Text>
             </View>
           ))}
         </Page>
