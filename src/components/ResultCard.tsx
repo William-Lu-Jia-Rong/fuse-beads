@@ -3,6 +3,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import type { PatternData } from "@/lib/paletteTypes";
 import { normalizePatternData } from "@/lib/paletteTypes";
+import { BEAD_VENDOR_OPTIONS, normalizeBeadVendor } from "@/lib/beadVendors";
 export type { PatternData } from "@/lib/paletteTypes";
 
 export type ResultCardProps = {
@@ -10,6 +11,8 @@ export type ResultCardProps = {
   patternId?: number;
   title?: string;
   thumbnailUrl?: string;
+  /** 入库时记录的色号体系（历史/队列结果展示） */
+  savedBeadVendor?: string | null;
   /** 嵌入列表等场景时去掉外边距与居中最大宽 */
   embedded?: boolean;
   /** Called after a successful save so parent can refresh `analysisJson`. */
@@ -21,6 +24,7 @@ export function ResultCard({
   patternId,
   title,
   thumbnailUrl,
+  savedBeadVendor,
   embedded = false,
   onSaved,
 }: ResultCardProps) {
@@ -125,6 +129,12 @@ export function ResultCard({
       <span className="text-xs text-gray-400">可直接修改数量；失焦或约 0.7 秒后自动保存</span>
     );
 
+  const vendorLabel = (() => {
+    if (savedBeadVendor == null || String(savedBeadVendor).trim() === "") return null;
+    const id = normalizeBeadVendor(savedBeadVendor);
+    return BEAD_VENDOR_OPTIONS.find((o) => o.id === id)?.nameZh ?? null;
+  })();
+
   return (
     <div
       className={`bg-white rounded-2xl shadow-sm border border-gray-200 w-full min-w-0 ${
@@ -151,6 +161,11 @@ export function ResultCard({
           >
             {title || "分析结果"}
           </h2>
+          {vendorLabel ? (
+            <p className="text-xs text-gray-500 mb-3">
+              保存时色号体系：<span className="font-medium text-gray-700">{vendorLabel}</span>
+            </p>
+          ) : null}
           <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
             <div className="flex flex-col min-w-0">
               <span className="text-xs text-gray-500 font-medium uppercase tracking-wider mb-1 break-words">

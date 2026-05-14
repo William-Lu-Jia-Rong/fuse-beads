@@ -14,6 +14,7 @@ type HistoryItem = {
   createdAt: string;
   thumbnailUrl: string;
   analysisJson: string;
+  beadVendor?: string | null;
 };
 
 export default function History() {
@@ -326,6 +327,7 @@ export default function History() {
                       patternId={item.id}
                       title={item.title}
                       thumbnailUrl={item.thumbnailUrl}
+                      savedBeadVendor={item.beadVendor}
                       onSaved={(json) => {
                         setItems((prev) =>
                           prev.map((x) => (x.id === item.id ? { ...x, analysisJson: json } : x))

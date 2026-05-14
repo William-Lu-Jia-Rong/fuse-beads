@@ -10,6 +10,7 @@ import {
   clearAnalyzeQueue,
   type StoredAnalyzeJob,
 } from "@/lib/analyzeQueueDb";
+import { BEAD_VENDOR_OPTIONS, normalizeBeadVendor } from "@/lib/beadVendors";
 
 const MAX_FILE_BYTES = 5 * 1024 * 1024;
 const MAX_QUEUE = 30;
@@ -24,6 +25,7 @@ type AnalyzeJob = {
   errorMessage?: string;
   patternId?: number;
   analysisJson?: string;
+  beadVendor?: string | null;
 };
 
 function readFileAsDataURL(file: File): Promise<string> {
@@ -50,6 +52,7 @@ export default function Home() {
   const jobsRef = useRef(jobs);
   jobsRef.current = jobs;
   const restoreToastShownRef = useRef(false);
+  const [beadVendorLabel, setBeadVendorLabel] = useState<string | null>(null);
 
   const queueWorkKey = useMemo(
     () =>
@@ -185,6 +188,20 @@ export default function Home() {
 
   useEffect(() => {
     void (async () => {
+      try {
+        const res = await fetch("/api/settings");
+        const data = await res.json();
+        const id = normalizeBeadVendor(data.beadVendor);
+        const opt = BEAD_VENDOR_OPTIONS.find((o) => o.id === id);
+        setBeadVendorLabel(opt?.nameZh ?? id);
+      } catch {
+        setBeadVendorLabel(null);
+      }
+    })();
+  }, []);
+
+  useEffect(() => {
+    void (async () => {
       const raw = await loadAnalyzeQueue();
       if (raw && raw.length > 0) {
         const restored: AnalyzeJob[] = raw.map((row) => {
@@ -253,6 +270,7 @@ export default function Home() {
                   status: "done" as const,
                   patternId: data.pattern.id,
                   analysisJson: data.pattern.analysisJson,
+                  beadVendor: data.pattern.beadVendor ?? null,
                 }
               : j
           )
@@ -289,6 +307,12 @@ export default function Home() {
         <p className="text-lg text-gray-500">
           支持一次选择或拖拽多张截图，将按顺序自动逐张分析并保存到历史。刷新页面不会丢失队列（已保存到本机），关闭标签前请尽量等当前一张分析完成。
         </p>
+        {beadVendorLabel ? (
+          <p className="text-sm text-gray-500 mt-3">
+            当前分析色号体系：<span className="font-medium text-gray-700">{beadVendorLabel}</span>
+            <span className="text-gray-400">（在「服务设置」中修改）</span>
+          </p>
+        ) : null}
       </div>
 
       <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-200 text-center">
@@ -419,6 +443,7 @@ export default function Home() {
                         patternId={job.patternId}
                         thumbnailUrl={job.preview}
                         title={job.title}
+                        savedBeadVendor={job.beadVendor}
                         onSaved={(json) => {
                           setJobs((prev) =>
                             prev.map((j) =>

@@ -15,12 +15,20 @@ export interface PatternData {
   totals: { totalBeads: number; estimatedMinutes: number };
 }
 
+function toNonNegativeInt(n: unknown): number {
+  if (typeof n === "number" && Number.isFinite(n)) {
+    return Math.max(0, Math.floor(n));
+  }
+  const parsed = parseInt(String(n ?? "").trim(), 10);
+  return Number.isFinite(parsed) ? Math.max(0, parsed) : 0;
+}
+
 /** Normalize legacy palette rows (only `label`) for display & merge. */
 export function normalizePaletteEntry(raw: {
   code?: string | number | null;
   nameZh?: string | null;
   label?: string | null;
-  count: number;
+  count?: number | string | null;
 }): PaletteEntry {
   const nameZh =
     (raw.nameZh && String(raw.nameZh).trim()) ||
@@ -33,7 +41,7 @@ export function normalizePaletteEntry(raw: {
   return {
     code: code || "—",
     nameZh,
-    count: raw.count,
+    count: toNonNegativeInt(raw.count),
     ...(raw.label && !raw.nameZh ? { label: String(raw.label) } : {}),
   };
 }

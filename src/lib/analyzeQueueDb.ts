@@ -13,6 +13,7 @@ export type StoredAnalyzeJob = {
   errorMessage?: string;
   patternId?: number;
   analysisJson?: string;
+  beadVendor?: string | null;
 };
 
 function openDb(): Promise<IDBDatabase> {

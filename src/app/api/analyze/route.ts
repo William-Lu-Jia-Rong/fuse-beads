@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { normalizePaletteEntry, normalizePatternData } from "@/lib/paletteTypes";
+import { beadVendorPromptSection, normalizeBeadVendor } from "@/lib/beadVendors";
 import OpenAI from "openai";
 import { z } from "zod";
 
@@ -8,7 +9,7 @@ const rawPaletteRow = z.object({
   code: z.union([z.string(), z.number()]).optional().nullable(),
   nameZh: z.string().optional().nullable(),
   label: z.string().optional().nullable(),
-  count: z.number(),
+  count: z.coerce.number(),
 });
 
 const analysisSchema = z.object({
@@ -29,7 +30,8 @@ export const maxDuration = 60;
 
 export async function POST(request: Request) {
   try {
-    const { imageBase64, title } = await request.json();
+    const body = await request.json();
+    const { imageBase64, title, beadVendor: bodyVendor } = body;
 
     if (!imageBase64 || !title) {
       return NextResponse.json({ error: "Missing imageBase64 or title" }, { status: 400 });
@@ -37,6 +39,7 @@ export async function POST(request: Request) {
 
     // 1. Fetch settings to get API key
     const settings = await prisma.appSettings.findUnique({ where: { id: 1 } });
+    const beadVendor = normalizeBeadVendor(bodyVendor ?? settings?.beadVendor);
     if (!settings || !settings.apiKey) {
       return NextResponse.json({ error: "OpenAI API Key not configured" }, { status: 401 });
     }
@@ -57,13 +60,14 @@ export async function POST(request: Request) {
 
     // 3. Call OpenAI
     const prompt = `
-You are an expert at analyzing fuse bead (拼豆 / Perler / Hama style) patterns from a screenshot.
+You are an expert at analyzing fuse bead (拼豆) patterns from a screenshot (may be Perler, Hama, MARD, Artkal, COCO, etc.).
+${beadVendorPromptSection(beadVendor)}
 Return ONLY a JSON object (no markdown) with this exact shape:
 {
   "palette": [
     {
-      "code": "色号：优先 Perler 官方字母数字编号（如 A01、E11）；若无法辨认则写最接近的常见编号，仍不确定则写 待定",
-      "nameZh": "简体中文颜色名（如 黄色、浅绿、深绿、肤色），不要用英文",
+      "code": "Official catalog code string for the selected vendor mode (see rules above). If unreadable, use 待定.",
+      "nameZh": "简体中文颜色名（如 黄色、浅绿、深绿、肤色），与图或该品牌色卡一致；不要用英文",
       "count": 123
     }
   ],
@@ -144,6 +148,7 @@ Do not wrap in markdown. Output raw JSON only.
         title: title || "Unnamed Pattern",
         thumbnailUrl: imageBase64, // Storing full base64 as thumbnail for now, can be optimized later
         analysisJson: JSON.stringify(dataToSave),
+        beadVendor,
       },
     });
 

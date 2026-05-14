@@ -10,10 +10,12 @@ datasource db {
 }
 
 model AppSettings {
-  id        Int      @id @default(1)
-  updatedAt DateTime @updatedAt
-  apiKey    String?  // Optionally encrypted or masked in logic, stored as plain string for now or encrypted by server
-  baseUrl   String?
+  id         Int      @id @default(1)
+  updatedAt  DateTime @updatedAt
+  apiKey     String? // Optionally encrypted or masked in logic, stored as plain string for now or encrypted by server
+  baseUrl    String?
+  /** 拼豆色号体系：mard / perler / hama / artkal / coco / pando / mixed */
+  beadVendor String   @default("mixed")
 }
 
 model Pattern {
@@ -22,4 +24,6 @@ model Pattern {
   title        String
   thumbnailUrl String?  // Optional local path or external URL
   analysisJson String   // JSON string containing palette, grid, totals
+  /** 分析时使用的色号体系；旧数据经整理后为 mixed */
+  beadVendor   String?
 }

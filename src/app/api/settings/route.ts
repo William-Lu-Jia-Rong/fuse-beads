@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { normalizeBeadVendor } from "@/lib/beadVendors";
 
 export const dynamic = 'force-dynamic';
 
@@ -9,8 +10,15 @@ export async function GET() {
       where: { id: 1 },
     });
 
+    const beadVendor = normalizeBeadVendor(settings?.beadVendor);
+
     if (!settings) {
-      return NextResponse.json({ configured: false, maskedKey: null, baseUrl: null });
+      return NextResponse.json({
+        configured: false,
+        maskedKey: null,
+        baseUrl: null,
+        beadVendor,
+      });
     }
 
     const hasKey = !!settings.apiKey;
@@ -31,6 +39,7 @@ export async function GET() {
       configured: hasKey,
       maskedKey,
       baseUrl: settings.baseUrl || null,
+      beadVendor: normalizeBeadVendor(settings.beadVendor),
     });
   } catch (error) {
     console.error("Error fetching settings:", error);
@@ -43,24 +52,49 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { apiKey, baseUrl, action } = body;
 
-    // Optional: add a tiny validation
+    const existing = await prisma.appSettings.findUnique({ where: { id: 1 } });
+
     if (action === "clear") {
       await prisma.appSettings.upsert({
         where: { id: 1 },
         update: { apiKey: null, baseUrl: null },
-        create: { id: 1, apiKey: null, baseUrl: null },
+        create: {
+          id: 1,
+          apiKey: null,
+          baseUrl: null,
+          beadVendor: normalizeBeadVendor(existing?.beadVendor),
+        },
       });
       return NextResponse.json({ success: true, message: "Settings cleared" });
     }
 
-    if (typeof apiKey !== "string") {
-      return NextResponse.json({ error: "Invalid API Key" }, { status: 400 });
+    let nextKey = existing?.apiKey ?? null;
+    const trimmedKey = typeof apiKey === "string" ? apiKey.trim() : "";
+    if (trimmedKey) nextKey = trimmedKey;
+
+    let nextBase = existing?.baseUrl ?? null;
+    if (typeof baseUrl === "string") {
+      nextBase = baseUrl.trim() || null;
+    }
+
+    let nextVendor = normalizeBeadVendor(existing?.beadVendor);
+    if (typeof body.beadVendor === "string") {
+      nextVendor = normalizeBeadVendor(body.beadVendor);
     }
 
     await prisma.appSettings.upsert({
       where: { id: 1 },
-      update: { apiKey, baseUrl: baseUrl || null },
-      create: { id: 1, apiKey, baseUrl: baseUrl || null },
+      update: {
+        apiKey: nextKey,
+        baseUrl: nextBase,
+        beadVendor: nextVendor,
+      },
+      create: {
+        id: 1,
+        apiKey: nextKey,
+        baseUrl: nextBase,
+        beadVendor: nextVendor,
+      },
     });
 
     return NextResponse.json({ success: true, message: "Settings saved" });
